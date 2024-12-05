@@ -345,7 +345,13 @@ const System = {
     return { appName: customAppName, error: null };
   },
   fetchLogo: async function () {
-    return await fetch(`${API_BASE}/system/logo`, {
+    const url = new URL(`${fullApiUrl()}/system/logo`);
+    url.searchParams.append(
+      "theme",
+      localStorage.getItem("theme") || "default"
+    );
+
+    return await fetch(url, {
       method: "GET",
       cache: "no-cache",
     })
@@ -706,6 +712,30 @@ const System = {
     );
     return { viewable: isViewable, error: null };
   },
+
+  /**
+   * Validates a temporary auth token and logs in the user if the token is valid.
+   * @param {string} publicToken - the token to validate against
+   * @returns {Promise<{valid: boolean, user: import("@prisma/client").users | null, token: string | null, message: string | null}>}
+   */
+  simpleSSOLogin: async function (publicToken) {
+    return fetch(`${API_BASE}/request-token/sso/simple?token=${publicToken}`, {
+      method: "GET",
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          if (!text.startsWith("{")) throw new Error(text);
+          return JSON.parse(text);
+        }
+        return await res.json();
+      })
+      .catch((e) => {
+        console.error(e);
+        return { valid: false, user: null, token: null, message: e.message };
+      });
+  },
+
   experimentalFeatures: {
     liveSync: LiveDocumentSync,
     agentPlugins: AgentPlugins,
